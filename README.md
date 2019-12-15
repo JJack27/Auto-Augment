@@ -1,5 +1,5 @@
-# Auto-Augment
-An unofficial implementation of Google Brain's research in 2018 using tensorflow 1.15.0. Instead of using PPO, we use basic REINFORCE policy gradient algorithm.
+# UAlberta Multimedia Master Program - <Reinforcement Learning for Auto Data Augmentation>
+An unofficial implementation of Google Brain's research in 2018 using tensorflow 1.15.0. Instead of using PPO, we use basic REINFORCE policy gradient algorithm with involving creative idea : depressed feedback.
 
 ## Requirement
 - `numpy`
