@@ -72,11 +72,6 @@ class Controller:
         with tf.variable_scope("controller", reuse=tf.AUTO_REUSE):
             # define LSTM layer
             self.lstm_layer = rnn.BasicLSTMCell(num_units=self._lstm_units, name="controller/rnn_lstm")
-            h = np.random.uniform(-0.05, 0.05, [1,100])
-            c = np.random.uniform(-0.05, 0.05, [1,100])
-            #state_h = tf.Variable(initial_value=h, shape=[1, 100], dtype=np.float32)
-            #state_c = tf.Variable(initial_value=c, shape=[1, 100], dtype=np.float32)
-            #self.initial_state = tf.nn.rnn_cell.LSTMStateTuple(state_c, state_h)
             self.state = self.lstm_layer.zero_state(1, tf.float32)
             
             # define softmax classifier
@@ -89,7 +84,6 @@ class Controller:
                                   name="controller/softmax_layer_mag", kernel_initializer=init)
             
             # initialized embedding layers 
-            #with tf.variable_scope('embeddings'):
             for i in range(3):
                 weights = tf.get_variable('state_embeddings_%d' % i,
                                 shape=[self._search_space_size[i] + 1, self._embedding_size],
@@ -98,58 +92,47 @@ class Controller:
              
             input_layer = tf.nn.embedding_lookup(self._embedding_weights[-1], self.x)
             
-
-            # initialize LSTM states as initial_state
-            
-            #self.state = self.initial_state
             for i in range(self._output_policies):
-                #with tf.name_scope('controller_output_%d' % i):
-                    # generate operation type
-                    output_type, self.state = tf.nn.dynamic_rnn(self.lstm_layer, 
+                output_type, self.state = tf.nn.dynamic_rnn(self.lstm_layer, 
                                             input_layer, 
                                             initial_state=self.state, 
                                             dtype=tf.float32)
-                    softmax_result_type = self.softmax_layer_type(output_type)
-                    pred_type = tf.argmax(softmax_result_type, axis=-1)
-                    cell_input = tf.cast(pred_type, tf.int32)
-                    cell_input = tf.add(cell_input, 1)
-                    input_layer = tf.nn.embedding_lookup(self._embedding_weights[0], cell_input)
+                softmax_result_type = self.softmax_layer_type(output_type)
+                pred_type = tf.argmax(softmax_result_type, axis=-1)
+                cell_input = tf.cast(pred_type, tf.int32)
+                cell_input = tf.add(cell_input, 1)
+                input_layer = tf.nn.embedding_lookup(self._embedding_weights[0], cell_input)
 
-                    # generate operation probabilities
-                    output_prob, self.state = tf.nn.dynamic_rnn(self.lstm_layer, 
+                # generate operation probabilities
+                output_prob, self.state = tf.nn.dynamic_rnn(self.lstm_layer, 
                                             input_layer, 
                                             initial_state=self.state, 
                                             dtype=tf.float32)
-                    softmax_result_prob = self.softmax_layer_prob(output_prob)
-                    pred_prob = tf.argmax(softmax_result_prob, axis=-1)
-                    cell_input = tf.cast(pred_prob, tf.int32)
-                    cell_input = tf.add(cell_input, 1)
-                    input_layer = tf.nn.embedding_lookup(self._embedding_weights[1], cell_input)
+                softmax_result_prob = self.softmax_layer_prob(output_prob)
+                pred_prob = tf.argmax(softmax_result_prob, axis=-1)
+                cell_input = tf.cast(pred_prob, tf.int32)
+                cell_input = tf.add(cell_input, 1)
+                input_layer = tf.nn.embedding_lookup(self._embedding_weights[1], cell_input)
                     
 
-                    # generate operation magnitude
-                    output_mag, self.state = tf.nn.dynamic_rnn(self.lstm_layer, 
+                # generate operation magnitude
+                output_mag, self.state = tf.nn.dynamic_rnn(self.lstm_layer, 
                                             input_layer, 
                                             initial_state=self.state, 
                                             dtype=tf.float32)
-                    softmax_result_mag = self.softmax_layer_mag(output_mag)
-                    pred_mag = tf.argmax(softmax_result_mag, axis=-1)
-                    cell_input = tf.cast(pred_mag, tf.int32)
-                    cell_input = tf.add(cell_input, 1)
-                    input_layer = tf.nn.embedding_lookup(self._embedding_weights[2], cell_input)
+                softmax_result_mag = self.softmax_layer_mag(output_mag)
+                pred_mag = tf.argmax(softmax_result_mag, axis=-1)
+                cell_input = tf.cast(pred_mag, tf.int32)
+                cell_input = tf.add(cell_input, 1)
+                input_layer = tf.nn.embedding_lookup(self._embedding_weights[2], cell_input)
 
-                    self.softmaxes.append(softmax_result_type)
-                    self.softmaxes.append(softmax_result_prob)
-                    self.softmaxes.append(softmax_result_mag)
+                self.softmaxes.append(softmax_result_type)
+                self.softmaxes.append(softmax_result_prob)
+                self.softmaxes.append(softmax_result_mag)
 
-                    self.outputs.append(pred_type)
-                    self.outputs.append(pred_prob)
-                    self.outputs.append(pred_mag)
-
-            #del cell_input, input_layer 
-            #del pred_mag, pred_prob, pred_type
-            #del output_mag, output_prob, output_type
-            #del softmax_result_type, softmax_result_prob, softmax_result_mag
+                self.outputs.append(pred_type)
+                self.outputs.append(pred_prob)
+                self.outputs.append(pred_mag)
 
             # calculate gradient of trainable_variables w.r.t outputs from model
             #   - Thus, w.r.t the probabilities of each layer
@@ -157,12 +140,8 @@ class Controller:
             for output in self.softmaxes:
                 log_output.append(tf.math.log(output))
             var_to_train = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='controller')
-            #var_to_train += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='rnn')
-            #for v in var_to_train:
-            #    print(v)
             log_grad = tf.gradients(log_output, var_to_train)
             
-            #####################################################
             self.gradients = [gradient * (self.reward) for gradient in log_grad]
             self.gradients = zip(self.gradients, var_to_train)
             self.optimizer = tf.train.GradientDescentOptimizer(0.0001).apply_gradients(self.gradients)
@@ -172,10 +151,7 @@ class Controller:
     # method to update the parameters of lstm and softmax classifiers
     def update(self, accuracy):
         # Update trainable parameters via policy gradient
-        #self._decay_rewards(accuracy)
         scale = (accuracy - self.baseline)
-        #print("="*30)
-        #print("Scale = %.4f" % scale)
         
         # initalize saver
         if self._save_model or self._load_model:
@@ -198,9 +174,7 @@ class Controller:
 
     # given random input with self.embeddingsize, generate subpolicies
     def generate_subpolicies(self):
-
         # feed to model, get softmax
-        #self.run_model(self.x)
 
         # run global variable initializer if needed
         if not self.initialized:
@@ -221,8 +195,6 @@ class Controller:
         
         # run session to get policies and softmaxes for inspection
         generated_subpolicies, soft = self.sess.run([self.outputs, self.softmaxes], feed_dict={self.x: self.input_x})
-        print(soft[0])
-        #self.input_x = generated_subpolicies[-1][-1].reshape(-1, 1)
 
         if self._save_model:
             save_path = saver.save(self.sess, "./model.ckpt")
@@ -249,20 +221,9 @@ class Controller:
     
     def _exp_moving_average_baseline(self, accuracy):
         self.baseline = self.ema_p * accuracy + (1 - self.ema_p) * self.baseline
-
-
-        
+    
 def print_policy(policies):
     print("-"*30)
     for p in policies:
         operation, prob, mag = p
         print("Operation: %-6dProb: %-6dMag:%-6d" %(operation, prob, mag))
-'''
-tf.reset_default_graph()
-sess = tf.Session()
-controller = Controller(sess, 0.7)
-po = controller.generate_subpolicies()
-for i in [0.5, 0.4, 0.3, 0.2, 0.1]:
-    controller.update(i)
-    controller.generate_subpolicies()
-'''

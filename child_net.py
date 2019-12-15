@@ -73,10 +73,3 @@ class ChildNetwork:
     
     def evaluate(self):
         return self.model.evaluate(self.x_test, self.y_test, verbose=0)
-
-'''
-x_train, y_train = DataIterator().data_and_label
-x_test, y_test = DataIterator(test = True).data_and_label
-
-
-'''
